@@ -115,7 +115,7 @@
         let elements;
 
         async function initialize() {
-            const response = await fetch("/api/create-payment-intent", {
+const response = await fetch("/api/create-landing-payment", {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
@@ -162,7 +162,7 @@
             alert("No tier selected.");
             window.location.href = "/pricing.html";
         } else {
-            initialize();
+            window.addEventListener('load', initialize);
         }
     </script>
 </body>
