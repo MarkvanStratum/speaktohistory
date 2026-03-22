@@ -600,8 +600,9 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
         const paymentIntent = event.data.object;
         const plan = paymentIntent.metadata && paymentIntent.metadata.plan;
         const email = paymentIntent.metadata && paymentIntent.metadata.email;
-        const userId = paymentIntent.metadata && paymentIntent.metadata.userId;
-
+const userId = paymentIntent.metadata?.userId 
+  ? parseInt(paymentIntent.metadata.userId) 
+  : null;
         console.log("💳 payment_intent.succeeded", { plan, email, userId });
 
         // Check if user exists. If not, create them.
