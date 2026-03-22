@@ -115,7 +115,7 @@
         let elements;
 
         async function initialize() {
-const response = await fetch("/api/create-landing-payment", {
+const response = await fetch("/api/create-payment-intent", {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
@@ -123,7 +123,7 @@ const response = await fetch("/api/create-landing-payment", {
                 },
                 body: JSON.stringify({ 
                     plan: plan,
-                    email: localStorage.getItem("userEmail")
+                   
                 }),
             });
             
