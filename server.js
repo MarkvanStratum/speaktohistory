@@ -34,18 +34,25 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 app.use(cors());
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } catch (err) {
+        console.error("Webhook Signature Error:", err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    console.log("🔥 WEBHOOK RECEIVED:", event.type);
+
+    res.json({ received: true });
+});
 
 // JSON parser FIRST
 app.use(express.json());
 
-// Only special-case webhook AFTER
-app.use((req, res, next) => {
-	if (req.originalUrl === "/webhook") {
-		express.raw({ type: "application/json" })(req, res, next);
-	} else {
-		next();
-	}
-});
 
 // THEN routes
 app.post("/api/create-landing-payment", handleCreateIntent);
@@ -543,100 +550,6 @@ app.get("/api/messages/:characterId", authenticateToken, async (req, res) => {
 		console.error("Fetch messages error:", err);
 		res.status(500).json({ error: "Server error" });
 	}
-});
-
-//--------------------------------------------
-// STRIPE WEBHOOK
-//--------------------------------------------
-
-// UPDATED: Webhook to handle PaymentIntents and Plan persistence
-app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err) {
-        console.error("Webhook Signature Error:", err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    async function applyPlan(plan, userId, email) {
-    let expiresAt = null;
-    let isLifetime = false;
-
- if (plan === 'god' || plan === 'all') {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    expiresAt = date;
-    isLifetime = false;
-
-} else if (plan === 'lifetime') {
-    expiresAt = null;
-    isLifetime = true;
-}
-
-    try {
-        if (userId) {
-            await pool.query(
-                "UPDATE users SET plan = $1, expires_at = $2, lifetime = $3, messages_sent = 0 WHERE id = $4",
-                [plan, expiresAt, isLifetime, userId]
-            );
-        } else if (email) {
-            // Fix for the database query: using email to find user
-            await pool.query(
-                "UPDATE users SET plan = $1, expires_at = $2, lifetime = $3, messages_sent = 0 WHERE email = $4",
-                [plan, expiresAt, isLifetime, email]
-            );
-        }
-        console.log(`✅ Plan ${plan} applied to ${email || userId}`);
-    } catch (err) {
-        console.error("❌ Error applying plan:", err);
-    }
-}
-
-    // PaymentIntent flow (THIS is what checkout.html uses)
-    if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object;
-        const plan = paymentIntent.metadata && paymentIntent.metadata.plan;
-        const email = paymentIntent.metadata && paymentIntent.metadata.email;
-const userId = paymentIntent.metadata?.userId 
-  ? parseInt(paymentIntent.metadata.userId) 
-  : null;
-        console.log("💳 payment_intent.succeeded", { plan, email, userId });
-
-        // Check if user exists. If not, create them.
-        const userCheck = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-        
-        if (userCheck.rows.length === 0 && email) {
-            const tempPassword = crypto.randomBytes(8).toString('hex');
-            const hashed = await bcrypt.hash(tempPassword, 10);
-            
-            await pool.query(
-                "INSERT INTO users (email, password, plan, lifetime, messages_sent) VALUES ($1, $2, $3, $4, 0)",
-                [email, hashed, plan, plan === '4995']
-            );
-            console.log(`👤 Guest User Created: ${email}`);
-        }
-
-        await applyPlan(plan, userId, email);
-    }
-
-    // Checkout flow (if you ever use /api/create-checkout)
-    if (event.type === "checkout.session.completed") {
-        const session = event.data.object;
-        const plan = session.metadata && session.metadata.plan;
-        const email =
-            (session.metadata && session.metadata.email) ||
-            (session.customer_details && session.customer_details.email);
-        const userId = session.metadata && session.metadata.userId;
-
-        console.log("🔥 checkout.session.completed", { plan, email, userId });
-
-        await applyPlan(plan, userId, email);
-    }
-
-    res.json({ received: true });
 });
 
 app.get("/", (req, res) => {
