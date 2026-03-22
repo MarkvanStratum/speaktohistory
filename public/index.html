@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mind of Legends — Converse with History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-archive: #f4f1ea; 
+      --marble: #ffffff;
+      --gold-legend: #c5a059;
+      --blue-deep: #1e293b;
+      --text-main: #33302c;
+      --text-muted: #8a8276;
+      --border-accent: rgba(197, 160, 89, 0.25);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; color: var(--text-main); background-color: var(--bg-archive);
+      font-family: "EB Garamond", serif; font-size: 19px; line-height: 1.7;
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0px 20px 80px; transition: max-width 0.3s; }
+    body.logged-in .wrap { max-width: none; width: 100%; padding: 0 10px 40px; }
+    
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0; border-bottom: 1px solid var(--border-accent); margin-bottom: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 15px; }
+    .logo { width: 50px; height: 50px; background: var(--blue-deep); border: 1.5px solid var(--gold-legend); border-radius: 50%; display: grid; place-items: center; font-family: "Cinzel", serif; color: var(--gold-legend); font-size: 22px; }
+    
+    .hero { text-align: center; padding: 40px 0; max-width: 800px; margin: 0 auto; }
+    .hero h2 { font-family: "Cinzel", serif; font-size: 42px; color: var(--blue-deep); margin: 0; }
+    .hero p { font-style: italic; color: var(--text-muted); font-size: 22px; margin-top: 10px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 40px; }
+    body.logged-in .grid { grid-template-columns: 1fr; gap: 0; }
+
+    @media (max-width: 950px) { .grid { grid-template-columns: 1fr !important; } }
+
+    .card { background: var(--marble); border: 1px solid var(--border-accent); border-radius: var(--radius); box-shadow: 0 15px 50px rgba(0,0,0,0.05); overflow: hidden; }
+    
+    /* Auth Styles */
+    .tabs { display: flex; background: #f8f8f8; cursor: pointer; }
+    .tab { flex: 1; padding: 15px; text-align: center; font-family: "Cinzel", serif; color: var(--text-muted); font-size: 13px; border-bottom: 2px solid transparent; }
+    .tab.active { background: white; color: var(--gold-legend); border-bottom: 2px solid var(--gold-legend); }
+    input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #e0ddd5; font-family: inherit; }
+    .btn { padding: 14px 28px; border-radius: 6px; font-family: "Cinzel", serif; cursor: pointer; border: 1px solid var(--gold-legend); background: transparent; color: var(--gold-legend); text-transform: uppercase; letter-spacing: 1px; width: 100%; transition: 0.3s; }
+    .btn.primary { background: var(--gold-legend); color: white; }
+    .btn:hover { opacity: 0.8; }
+
+    /* Chat App Styles */
+    .chat-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); height: 650px; }
+    body.logged-in .chat-shell { height: calc(100vh - 120px); }
+    
+    .sidebar { background: #faf9f7; border-right: 1px solid var(--border-accent); padding: 20px; overflow-y: auto; }
+    .pitem { padding: 15px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; background: white; transition: 0.2s; font-family: "Cinzel", serif; font-size: 14px; }
+    .pitem.active { border-color: var(--gold-legend); box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: #fffcf5; }
+    
+    .chat-log { padding: 30px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; flex: 1; background: #fff; }
+    .bubble { padding: 14px 18px; border-radius: 18px; max-width: 85%; font-size: 17px; }
+    .bubble.them { background: #f1f5f9; align-self: flex-start; border-bottom-left-radius: 4px; }
+    .bubble.me { background: var(--blue-deep); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+
+    .hide { display: none !important; }
+    #limitModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(5px); }
+  </style>
+</head>
+
+<body>
+  <div class="wrap" id="mainWrap">
+    <header>
+      <div class="brand">
+        <div class="logo">M</div>
+        <h1 style="font-family: Cinzel; margin:0;">Mind of Legends</h1>
+      </div>
+      <button class="btn" id="logoutBtn" style="display:none; width: auto;">Exit Archive</button>
+    </header>
+
+    <section class="hero" id="heroText">
+      <h2>Converse with the Greats</h2>
+      <p>Consult with the minds that shaped our world.</p>
+    </section>
+
+    <div class="grid">
+      <div id="authContainer">
+        <div class="card" style="margin-bottom: 30px;">
+          <div class="tabs">
+            <div id="tLogin" class="tab active">Sign In</div>
+            <div id="tReg" class="tab">Register</div>
+          </div>
+          <div style="padding: 30px;">
+            <div id="loginBox">
+              <input id="lEmail" type="email" placeholder="Email Address" />
+              <input id="lPass" type="password" placeholder="Password" />
+              <button class="btn primary" id="loginBtn">Access Archives</button>
+            </div>
+            <div id="regBox" class="hide">
+              <input id="rEmail" type="email" placeholder="Email Address" />
+              <input id="rPass" type="password" placeholder="Choose Password" />
+              <button class="btn primary" id="registerBtn">Begin Journey</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 25px;">
+          <h4 style="font-family: Cinzel; color: var(--gold-legend); margin: 0 0 15px;">Support the Archive</h4>
+          <button class="btn" style="margin-bottom: 10px;" onclick="window.location.href='/pricing.html'">Historical Tier ($29.95)</button>
+          <button class="btn" style="margin-bottom: 10px;" onclick="window.location.href='/pricing.html'">Legendary Tier ($35.95)</button>
+          <button class="btn primary" onclick="window.location.href='/pricing.html'">Lifetime Access ($49.95)</button>
+        </div>
+      </div>
+
+      <div class="card" id="chatCard">
+        <div class="chat-shell">
+          <div class="sidebar" id="profiles">
+            </div>
+          <div style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
+            <div style="padding: 20px; border-bottom: 1px solid var(--border-accent); display: flex; align-items: center; gap: 15px;">
+              <div id="chatTitle" style="font-family: Cinzel; color: var(--blue-deep); font-weight: bold;">Select a Figure</div>
+            </div>
+            <div class="chat-log" id="chatLog">
+              <div id="emptyNote" style="text-align: center; color: var(--text-muted); font-style: italic; margin-top: 100px;">Choose a legend to start the dialogue.</div>
+            </div>
+            <div style="padding: 20px; border-top: 1px solid var(--border-accent); display: flex; gap: 12px; background: white;">
+              <textarea id="chatInput" placeholder="Pose your question..." disabled style="flex:1; border: 1px solid #e0ddd5; border-radius: 8px; padding: 10px; resize: none; font-family: inherit;"></textarea>
+              <button class="btn primary" id="sendBtn" disabled style="width: auto;">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="limitModal">
+    <div class="card" style="max-width: 450px; width: 90%; padding: 40px; text-align: center; border: 2px solid var(--gold-legend); background: white;">
+      <div class="logo" style="margin: 0 auto 20px;">M</div>
+      <h3 style="font-family: Cinzel; color: var(--blue-deep); font-size: 24px; margin-bottom: 15px;">Archive Limit Reached</h3>
+      <p style="color: var(--text-muted); font-style: italic; margin-bottom: 30px;">You have completed your free consultations. To continue your journey through history, please choose a membership plan.</p>
+      <button class="btn primary" onclick="window.location.href='/pricing.html'">View Membership Plans</button>
+      <button class="btn" style="border:none; margin-top:15px;" onclick="document.getElementById('limitModal').style.display='none'">Dismiss</button>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const API_BASE = "";
+    let selectedId = null;
+
+    const getToken = () => localStorage.getItem("jwt") || "";
+    const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": `Bearer ${getToken()}` });
+
+    // Tabs
+    $("tLogin").onclick = () => { $("tLogin").classList.add("active"); $("tReg").classList.remove("active"); $("loginBox").classList.remove("hide"); $("regBox").classList.add("hide"); };
+    $("tReg").onclick = () => { $("tReg").classList.add("active"); $("tLogin").classList.remove("active"); $("regBox").classList.remove("hide"); $("loginBox").classList.add("hide"); };
+
+    async function loadProfiles() {
+      const res = await fetch(`${API_BASE}/api/profiles`);
+      const profiles = await res.json();
+      const container = $("profiles");
+      container.innerHTML = "";
+      profiles.forEach(p => {
+        const div = document.createElement("div");
+        div.className = "pitem";
+        div.innerHTML = `<strong>${p.name}</strong>`;
+        div.onclick = () => selectProfile(p, div);
+        container.appendChild(div);
+      });
+    }
+
+    function selectProfile(p, el) {
+      document.querySelectorAll(".pitem").forEach(i => i.classList.remove("active"));
+      el.classList.add("active");
+      selectedId = p.id;
+      $("chatTitle").innerText = p.name;
+      $("emptyNote").style.display = "none";
+      $("chatLog").innerHTML = "";
+      $("chatInput").disabled = false;
+      $("sendBtn").disabled = false;
+
+      if (getToken()) {
+        loadHistory(p.id);
+      } else {
+        addMsg("them", `I am ${p.name}. What brings you to these archives? I can offer you a single insight before you must register.`);
+      }
+    }
+
+    async function loadHistory(cid) {
+      const res = await fetch(`${API_BASE}/api/chat/history?characterId=${cid}`, { headers: authHeaders() });
+      if (res.ok) {
+        const history = await res.json();
+        history.forEach(m => addMsg(m.from_user ? "me" : "them", m.text));
+      }
+    }
+
+    function addMsg(side, text) {
+      const d = document.createElement("div");
+      d.className = `bubble ${side}`;
+      d.innerText = text;
+      $("chatLog").appendChild(d);
+      $("chatLog").scrollTop = $("chatLog").scrollHeight;
+    }
+
+    // Messaging Logic
+    $("sendBtn").onclick = async () => {
+      const text = $("chatInput").value;
+      if (!text || !selectedId) return;
+
+      addMsg("me", text);
+      $("chatInput").value = "";
+
+      // GUEST LOGIC
+      if (!getToken()) {
+        addMsg("them", "To continue this consultation and unlock the full archive, please create an account on the left.");
+        $("chatInput").disabled = true;
+        $("sendBtn").disabled = true;
+        return;
+      }
+
+      // LOGGED IN LOGIC
+      try {
+        const res = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ characterId: selectedId, message: text })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          addMsg("them", data.reply);
+        } else if (res.status === 403 && data.error === "LIMIT_REACHED") {
+          $("limitModal").style.display = "flex";
+        } else {
+          alert(data.error);
+        }
+      } catch(e) { alert("Archive connection lost."); }
+    };
+
+    // Auth
+    $("loginBtn").onclick = async () => {
+      const res = await fetch(`${API_BASE}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: $("lEmail").value, password: $("lPass").value })
+      });
+      if (res.ok) { const d = await res.json(); localStorage.setItem("jwt", d.token); location.reload(); }
+      else alert((await res.json()).error);
+    };
+
+    $("registerBtn").onclick = async () => {
+        const res = await fetch(`${API_BASE}/api/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: $("rEmail").value, password: $("rPass").value })
+      });
+      if (res.ok) { alert("Welcome to the Archive. Please Sign In."); $("tLogin").click(); }
+      else alert((await res.json()).error);
+    };
+
+    $("logoutBtn").onclick = () => { localStorage.removeItem("jwt"); location.reload(); };
+
+    window.onload = () => {
+      loadProfiles();
+      if (getToken()) {
+        document.body.classList.add("logged-in");
+        $("authContainer").classList.add("hide");
+        $("logoutBtn").style.display = "block";
+        $("heroText").innerHTML = "<h2>Archive Access Granted</h2><p>Continue your dialogue with the legends of history.</p>";
+      }
+    };
+  </script>
+<footer style="
+margin-top:40px;
+padding:20px;
+text-align:center;
+font-size:14px;
+color:#8a8276;
+border-top:1px solid rgba(197,160,89,0.25);
+">
+
+<a href="/privacy-policy.html" style="color:#8a8276;margin-right:20px;">
+Privacy Policy
+</a>
+
+<a href="/terms-and-conditions.html" style="color:#8a8276;">
+Terms & Conditions
+</a>
+
+</footer>
+
+</body>
+</html>

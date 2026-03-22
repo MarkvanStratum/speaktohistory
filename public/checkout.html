@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Access — Mind of Legends</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=EB+Garamond&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold-legend: #c5a059;
+            --blue-deep: #1e293b;
+            --bg-archive: #f4f1ea;
+            --text-main: #33302c;
+        }
+        body { 
+            background: var(--bg-archive); 
+            font-family: 'EB Garamond', serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            color: var(--text-main);
+        }
+        .checkout-box { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 15px 50px rgba(0,0,0,0.08); 
+            width: 100%; 
+            max-width: 450px; 
+            border: 1px solid rgba(197,160,89,0.25); 
+        }
+        .logo { 
+            text-align: center; 
+            color: var(--gold-legend); 
+            font-family: 'Cinzel'; 
+            font-size: 24px; 
+            margin-bottom: 10px; 
+            letter-spacing: 2px;
+        }
+        .logo-mark {
+            width: 50px;
+            height: 50px;
+            background: var(--blue-deep);
+            border: 2px solid var(--gold-legend);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            margin: 0 auto 15px;
+            color: var(--gold-legend);
+            font-weight: bold;
+        }
+        h2 { 
+            text-align: center; 
+            font-family: 'Cinzel'; 
+            font-size: 20px; 
+            color: var(--blue-deep); 
+            margin-bottom: 30px; 
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        #payment-element { margin-bottom: 24px; }
+        .btn {
+            background: var(--gold-legend);
+            color: white;
+            font-family: 'Cinzel';
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn:hover { background: #b08d4a; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #error-message { color: #be123c; text-align: center; margin-top: 15px; font-size: 15px; }
+        .back-link { 
+            display: block; 
+            text-align: center; 
+            margin-top: 25px; 
+            color: #64748b; 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-family: 'Cinzel';
+        }
+        .back-link:hover { color: var(--gold-legend); }
+    </style>
+</head>
+<body>
+    <div class="checkout-box">
+        <div class="logo-mark">M</div>
+        <div class="logo">Mind of Legends</div>
+        <h2>Secure Archive Access</h2>
+        
+        <form id="payment-form">
+            <div id="payment-element">
+                </div>
+            <button id="submit" class="btn">Confirm Access</button>
+            <div id="error-message"></div>
+        </form>
+
+        <a href="/pricing.html" class="back-link">Return to Tiers</a>
+    </div>
+
+    <script>
+        const stripe = Stripe("pk_live_51TA3CuPJ1vAPmCA0QvtIZt3IAGXO0Q6uBFkGeAKyQ6vLBaYK1HBKoE3UGYhbb8EmJI3Rw8UrEtiYDAc4JZXIG94c00VIXXqch6"); // Replace with your actual key
+        const params = new URLSearchParams(window.location.search);
+        const plan = params.get('plan');
+        const token = localStorage.getItem("jwt");
+
+        let elements;
+
+        async function initialize() {
+            const response = await fetch("/api/create-payment-intent", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token 
+                },
+                body: JSON.stringify({ plan }),
+            });
+            
+            const data = await response.json();
+            if (data.error) {
+                document.getElementById('error-message').innerText = data.error;
+                return;
+            }
+
+            const { clientSecret } = data;
+            elements = stripe.elements({ clientSecret });
+            const paymentElement = elements.create("payment");
+            paymentElement.mount("#payment-element");
+        }
+
+        document.querySelector("#payment-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const submitBtn = document.querySelector("#submit");
+            submitBtn.disabled = true;
+
+            const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    // Redirect back to home with a success flag
+                    return_url: window.location.origin + "/?payment=success",
+                },
+            });
+
+            if (error) {
+                document.querySelector("#error-message").textContent = error.message;
+                submitBtn.disabled = false;
+            }
+        });
+
+        if (!token) {
+            alert("Please sign in to access the archives.");
+            window.location.href = "/";
+        } else if (!plan) {
+            alert("No tier selected.");
+            window.location.href = "/pricing.html";
+        } else {
+            initialize();
+        }
+    </script>
+</body>
+</html>
