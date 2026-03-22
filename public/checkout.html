@@ -121,7 +121,10 @@ const response = await fetch("/api/create-landing-payment", {
                     "Content-Type": "application/json",
                     "Authorization": "Bearer " + token 
                 },
-                body: JSON.stringify({ plan }),
+                body: JSON.stringify({ 
+                    plan: plan,
+                    email: localStorage.getItem("userEmail")
+                }),
             });
             
             const data = await response.json();
@@ -162,7 +165,7 @@ const response = await fetch("/api/create-landing-payment", {
             alert("No tier selected.");
             window.location.href = "/pricing.html";
         } else {
-            window.addEventListener('load', initialize);
+            initialize();
         }
     </script>
 </body>
