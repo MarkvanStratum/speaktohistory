@@ -47,9 +47,49 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
     console.log("🔥 WEBHOOK RECEIVED:", event.type);
 
+    if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object;
+
+        const plan = paymentIntent.metadata?.plan;
+        const email = paymentIntent.metadata?.email;
+        const userId = paymentIntent.metadata?.userId 
+            ? parseInt(paymentIntent.metadata.userId) 
+            : null;
+
+        console.log("💳 payment_intent.succeeded", { plan, email, userId });
+
+        let expiresAt = null;
+        let isLifetime = false;
+
+        if (plan === "god" || plan === "all") {
+            const date = new Date();
+            date.setDate(date.getDate() + 30);
+            expiresAt = date;
+        } else if (plan === "lifetime") {
+            isLifetime = true;
+        }
+
+        try {
+            if (userId) {
+                await pool.query(
+                    "UPDATE users SET plan = $1, expires_at = $2, lifetime = $3, messages_sent = 0 WHERE id = $4",
+                    [plan, expiresAt, isLifetime, userId]
+                );
+            } else if (email) {
+                await pool.query(
+                    "UPDATE users SET plan = $1, expires_at = $2, lifetime = $3, messages_sent = 0 WHERE email = $4",
+                    [plan, expiresAt, isLifetime, email]
+                );
+            }
+
+            console.log("✅ USER UPDATED SUCCESSFULLY");
+        } catch (err) {
+            console.error("❌ DB UPDATE FAILED:", err);
+        }
+    }
+
     res.json({ received: true });
 });
-
 // JSON parser FIRST
 app.use(express.json());
 
